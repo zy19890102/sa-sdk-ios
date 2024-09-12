@@ -117,7 +117,7 @@ Pod::Spec.new do |s|
     application.platform = :ios, '9.0'
     application.dependency 'SensorsAnalyticsSDK/Base'
   	application.source_files = 'SensorsAnalyticsSDK/AppExtension/*.{h,m}'
-  	application.public_header_files = 'SensorsAnalyticsSDK/AppExtension/SensorsAnalyticsSDK+SAAppExtension.h'
+  	application.public_header_files = 'SensorsAnalyticsSDK/AppExtension/*.h'
   end
 
   # 使用老版 Cell 点击全埋点采集方案，可能导致某些场景，事件漏采集。使用前建议咨询神策售后技术顾问，否则请慎重使用！
