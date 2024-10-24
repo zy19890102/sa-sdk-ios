@@ -81,6 +81,11 @@ static const char * kSASerialQueueLabel = "com.sensorsdata.serialQueue.StoreMana
             // 当有注册自定义存储插件时，做数据迁移
             if ([self isRegisteredCustomStorePlugin] && index != 0) {
                 id<SAStorePlugin> firstPlugin = self.plugins.firstObject;
+                // 自定义存储插件，设置忽略历史数据
+                if ([firstPlugin respondsToSelector:@selector(isIgnoreOldData)] && [firstPlugin isIgnoreOldData]) {
+                    return nil;
+                }
+
                 NSString *firstKey = [self storeKeyWithPlugin:firstPlugin key:key];
                 [firstPlugin setObject:result forKey:firstKey];
 
@@ -91,6 +96,7 @@ static const char * kSASerialQueueLabel = "com.sensorsdata.serialQueue.StoreMana
     }
     return nil;
 }
+
 
 #pragma mark - public
 
@@ -105,6 +111,20 @@ static const char * kSASerialQueueLabel = "com.sensorsdata.serialQueue.StoreMana
             }
         }];
         [self.plugins insertObject:plugin atIndex:0];
+    });
+}
+
+- (void)unregisterStorePluginWithPluginClass:(Class)cla {
+    if (!cla) {
+        return;
+    }
+    dispatch_async(self.serialQueue, ^{
+        [self.plugins enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id<SAStorePlugin>  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+            if ([obj isKindOfClass:cla]) {
+                [self.plugins removeObject:obj];
+                *stop = YES;
+            }
+        }];
     });
 }
 
@@ -210,10 +230,15 @@ static const char * kSASerialQueueLabel = "com.sensorsdata.serialQueue.StoreMana
             }
         }
 
+        /* 使用默认存储插件（最后注册的插件）
+            1. 当注册自定义存储插件
+            2. key 匹配失败
+         */
         id<SAStorePlugin> firstPlugin = self.plugins.firstObject;
         NSString *storeKey = [self storeKeyWithPlugin:firstPlugin key:key];
         [firstPlugin setObject:object forKey:storeKey];
-
+        
+        // 移除其他插件旧数据
         [self.plugins enumerateObjectsUsingBlock:^(id<SAStorePlugin>  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
             if (idx == 0) {
                 return;
